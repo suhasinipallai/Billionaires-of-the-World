@@ -32,7 +32,7 @@ no_age1 <- billionaires_data$age==0
 
 bb <- billionaires_data[no_age1,]
 
-
+bb
 
 no_age_data <- billionaires_data[billionaires_data$age==0,]
 # returned 56 entries which had 0 as age - not known values
@@ -46,7 +46,7 @@ toMatch <- c("&", "family", "brothers","and","-")
 billionaires_data$age = ifelse(billionaires_data$age==0 & grepl(paste(toMatch, collapse="|"), billionaires_data$name),500,billionaires_data$age) 
 # updated 27 age to 500, 29 to 0 (pattern doesnt match) 
 
-
+View(billionaires_data)
 
 ggplot(billionaires_data,aes(x=age,y= position )) +
   geom_col() 
@@ -226,7 +226,7 @@ mp <- ggplot() + map_world
 bb<-billionaires_data
 
 data(countryExData)
-
+#----------countries net worth distribution
 #creating a spatial polygon
 
 sp_data <- billionaires_data %>% 
@@ -282,8 +282,8 @@ do.call(addMapLegend
 
 
 
-
-
+#total worth world wide
+#---------------------------------
 
 mapDevice() #create world map shaped window
 mapCountryData(sPDF[which(sPDF$LDC=='LDC'),]
@@ -351,3 +351,89 @@ billionaires_data %>%
                    
 #-----------------------------------------------
 
+
+bb <- billionaires_data
+map_2_data <- joinCountryData2Map( bb
+                                   ,joinCode = "NAME"
+                                   ,nameJoinColumn = "country",
+                                   verbose=TRUE)
+
+library(leaflet)
+
+leaflet(data = map_2_data) %>% addTiles() %>%
+  addMarkers()
+
+plot(map_2_data)
+class(map_2_data)
+
+library(maps)
+
+leaflet(data = map_2_data) %>% addTiles() %>%
+  addMarkers(~LON, ~LAT, popup = ~as.character(name), label = ~as.character(name,age,worth))
+
+map_2_data$LAT
+class(my_map)
+dim(my_map)
+
+qpal <- colorQuantile("Orange", bb$worth_billions, n = 7)
+
+leaflet(map_2_data) %>%
+  addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 1,
+              color = ~qpal(worth_billions))
+
+#------
+
+bb$industry <- factor(sample.int(5L, unique(nrow(bb$industry)), TRUE))
+
+factpal <- colorFactor(topo.colors(17), bb$industry)
+
+g<- leaflet(map_2_data) %>%
+  addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = 1,
+              color = ~factpal(unique(bb$industry)))
+g
+  #--------------------------------------------
+
+
+library(ggplot2)
+ggplot(map_2_data, aes(x=map_2_data$LON, y=map_2_data$LAT, group=map_2_data$worth_billions)) +
+  geom_polygon(fill="white", colour="black") +
+  xlim(-20, 40) + ylim(25,75) 
+
+#-----------------
+
+#plot for gender 
+
+P <- billionaires_data %>% 
+   filter(!age==0 & !age==500,!gender=='unknown') %>%
+   group_by(gender) %>% 
+   summarise(Count = n()) %>% 
+   ggplot(aes(gender,Count,fill=gender)) +
+     geom_col() +
+     theme(legend.position="top")+
+     geom_text(aes(label=Count), vjust=1.6, color="black") 
+
+
+        p+ labs(title = "Genderwise Distribution", 
+           x ="Gender", y ="Num of Billionaires")
+        dev.print(png, file="plot.png")
+        ggsave("plot.png")
+
+     
+     
+        library(plotly)     
+ggplotly(p)        
+#----------------------
+
+b_data <-   billionaires_data %>% 
+   filter(!age==0 & !age==500 & !gender=='unknown') 
+str(b_data)
+colSums(is.na(b_data))
+
+#------------
+
+# saving the data with 1983 obs 
+
+saveRDS(b_data, 'r-objects/b_data.rds')
+write.csv(b_data, 'r-objects/b_data.csv')
+
+b_data %>% filter(country=='India' & gender=='F') %>%  group_by(industry) %>% summarise(count=n()) %>%View() 

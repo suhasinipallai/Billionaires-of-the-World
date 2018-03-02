@@ -1,0 +1,29 @@
+Able to analyze business data using 5 or more 
+of the Statistical/Mathematical Specialties 
+and expertise in 3 or more of the Statistical/Mathematical
+Specialties below:
+
+
+Sample Selection / Stratification
+Experimental Design
+Categorical Data Analysis
+Linear Regression
+Non-Parametric Analysis
+Multivariate Analysis
+Survey Design and Analysis
+Survival Analysis
+Time Series Analysis
+Forecasting
+Optimization
+Simulation Models
+Decision Trees
+Heuristic Models
+Algorithmic Models
+Complex Event Design
+
+-------------------------------------
+Introduction to Data Science for Big Data Analytics
+Introduction to R for Data Analytics
+
+---------------------------------
+

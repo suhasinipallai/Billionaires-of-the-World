@@ -18,6 +18,7 @@ ages <- c("All",ages)
 
 # Define UI for application 
 shinyUI(fluidPage(theme = shinytheme("cyborg"),
+                  tags$style(type="text/css", css),
   
   # Application title
   titlePanel(" World Billionaires - By Forbes - 2017 "),

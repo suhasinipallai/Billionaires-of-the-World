@@ -6,6 +6,7 @@ library(plotly)
 library(rworldmap)
 #reading the rds object
 
+
 billionaires_data <- readRDS('r-objects/billionaires_data.rds')
 
 billionaires_data <- billionaires_data %>% mutate(worth_billions = worth/1000)
@@ -173,6 +174,24 @@ billionaires_data %>%
                     ggplot(aes(x=industry,y=worth,fill = gender)) +
                     geom_col() +
                     theme(axis.text.x = element_text(angle=65,hjust = 1)) 
+#--------gender wise distribution
+b_data %>%  
+  group_by(country,gender) %>%
+  summarise(count=n()) %>% 
+  ggplot(aes(country,count,fill=gender,color=gender)) +
+  geom_col() +
+  geom_text(aes(label=count), vjust=-0.3, size=3.5)+
+  scale_y_continuous(breaks=seq(0,600,50)) +
+  coord_flip()
+#-----age group wise distribution
+b_data %>% ggplot(aes(age_group,fill=gender)) +geom_bar(position='dodge')
+
+b_data %>% ggplot(aes(industry,fill=gender)) +geom_bar(position='dodge')+
+  theme(axis.text.x = element_text(angle=65,hjust = 1))
+#--------
+plot_data <- b_data %>% group_by(gender,age_group) %>% summarise(ave_worth = mean(worth_billions)) %>%  ungroup()
+ggplot(plot_data,aes(y=gender,x=age_group,fill=ave_worth))+geom_raster()
+
 
 #--------------------------
 
@@ -436,4 +455,26 @@ colSums(is.na(b_data))
 saveRDS(b_data, 'r-objects/b_data.rds')
 write.csv(b_data, 'r-objects/b_data.csv')
 
-b_data %>% filter(country=='India' & gender=='F') %>%  group_by(industry) %>% summarise(count=n()) %>%View() 
+b_data %>% filter(country=='India' & gender=='F') %>%  group_by(industry) %>% summarise(count=n()) %>%View()
+
+
+b_data$age_group <-
+  case_when(
+    b_data$age < 20 ~ "less than 20",
+    b_data$age < 40 ~ "20-40",
+    b_data$age < 60 ~ "40-60",
+    b_data$age < 80 ~ "60-80",
+    TRUE            ~ "80-110"
+  )
+
+
+#--------------------------
+
+dat <- data.frame(
+  name = c('Bill Gates', 'Warren Buffett'),
+  flag = c('<img src="https://specials-images.forbesimg.com/imageserve/59d502f931358e542c034e76/416x416.jpg?background=000000&cropX1=245&cropX2=2420&cropY1=636&cropY2=2813
+" height="52"></img>',
+           '<img src="https://specials-images.forbesimg.com/imageserve/59d50559" height="52"></img>'
+  )
+)
+#-----------------------------------

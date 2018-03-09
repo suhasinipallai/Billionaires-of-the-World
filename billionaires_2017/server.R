@@ -1,179 +1,592 @@
-#
-# This is the server logic of a Shiny web application. You can run the 
-# application by clicking 'Run App' above.
-#
-# Find out more about building applications with Shiny here:
-# 
-#    http://shiny.rstudio.com/
-#
-
+library(tidyverse)
+library(magrittr)
 library(shiny)
 library(DT)
+library(plotly)
+
+
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
+
+
+# top 25 countries of the world with max no.of billionaires
   
-        
-        
-        if(g == 'All'){
-           b_data %>% 
-            filter(gender)
-        }
-        
-        
-        industry_summary_all <- b_data %>% 
-                         # filter(!age==0 & !age==500 & !gender=='unknown') %>% 
-                          group_by(industry) %>% 
-                          summarize(count = n()
-                           )
-       
-       country_summary_all <- b_data %>% 
-                          # filter(!age==0 & !age==500 & !gender=='unknown') %>% 
-                           group_by(country) %>% 
-                           summarize(count = n())
-       
-       source_networth_summary_all <-b_data %>% 
-                          #  filter(!age==0 & !age==500 & !gender=='unknown') %>% 
-                            group_by(source) %>% 
-                            summarise(count = n(),
-                                      sum_networth = sum(worth_billions))
-       
-       selected_options <- reactive({
-                req(input$checkbox)
-                billionaires_data %>% 
-                  filter(gender==input$gen,age==input$ag,country==input$country) 
-                   })
-       
+temp <- b_data %>%
+    group_by(
+      country,
+      gender
+    ) %>%
+    summarise(
+      count=n(),
+      total_networth = sum(worth_billions)
+    ) %>%
+    ungroup()
+  temp <- temp[order(-temp$count),][1:25,]
   
-#   output$barPlot <- renderPlot({
-#          billionaires_data %>%  
-#                    filter(.,rank >=input$rank) %>% 
-#                     select(rank,name,source,industry,age,worth) %>% 
-              # draw the histogram with the specified number of bins
-#          ggplot(aes(x=rank,y=worth),col = 'darkgray', border = 'white') +
-#             geom_col()
-    #  })
-       
-  # output$industryPlot <- renderPlot({
-  #   
-  #               industry_summary_all %>% 
-  #                filter(input$gen == "All" & input$ag == 'All') %>% 
-  #     ggplot(aes(reorder(industry,count),count)) +
-  #     geom_col(color="blue",fill="red")+
-  #     theme(axis.text.x =element_text(angle=65,hjust = 1))
-  #   
-  #   
-  # })  
-       
- output$industryPlot <- renderPlot({
-   
-              gender_input <- input$gen
-              age_input <- input$ag
-              country_input <- input$country       
-   
-         if (gender_input == 'All' & age_input == "All" & country_input=='All'){
-            
-            fil_select <- b_data %>%
-                       group_by(industry) %>% 
-                       summarise(count=n())
-          } else {
-            
-          fil_select <- b_data %>% 
-                        filter(
-                          gender==gender_input &
-                          country ==country_input
-                        ) %>% 
-                        group_by(industry,gender) %>% 
-                        summarise(count =n())
-          }
-              
-          ggplot(fil_select,aes(reorder(industry,count),count,color=gender)) +
-                geom_col(color="blue",fill="red")+
-               theme(axis.text.x =element_text(angle=65,hjust = 1))     
-          
- })  
+# rendering countrywise plot
   
-  
-  # 
-  # output$countryPlot <- renderPlot({
-  #                  country_summary_all %>% 
-  #                     filter(input$gen == "All" & input$ag == 'All') %>% 
-  #                     filter(count>=10) %>% 
-  #                     ggplot(aes(reorder(country,count),count,label=count)) +
-  #                     geom_col(fill="lightblue") +
-  #                     geom_text(position=position_stack())+
-  #                     theme(axis.text.x=element_text(angle=65,hjust=1))+
-  #                     coord_flip() 
-  #   
-  # })
-  
- output$countryPlot <- renderPlot({
-                     
-                       gender_input <- input$gen
-                       age_input <- input$ag
-                       country_input <- input$country       
-                   
-       if (gender_input == 'All' & age_input == "All" & country_input == 'All'){
+output$countryPlot <- renderPlot({
+    
+    ggplot(data=temp,aes(reorder(country,count),count,fill=gender)) +
+      geom_col(position='dodge') +
       
-                          fil_select <- b_data %>%
-                          group_by(country) %>% 
-                          summarise(count=n())
-                        } else {
+      geom_text(aes(label=count), vjust=-0.3, size=3.5)+
+      scale_y_continuous(breaks=seq(0,600,50)) +
+      labs(
+        #title = "\n    Billionaires count in different Countries   " ,
+        x =" Country " ,y = "Count of Billionaires " , fill = "Gender") +
+      
+      theme(
+        plot.title = element_text(color="black", size=14, face="bold.italic"),
+        plot.background  = element_rect(fill = "lightblue") ,
+        
+        panel.background = element_rect(color = "grey50"),
+        panel.ontop = FALSE ,
+        
+        axis.title.x = element_text(color="black", size=14, face="bold"),
+        axis.title.y = element_text(color="black", size=14, face="bold"),
+        
+        axis.text.x = element_text( hjust = 1,colour = "black",size=12,face="bold" ),
+        axis.text.y = element_text( hjust = 1,colour = "black",size=12,face="bold" ),
+        
+        legend.box.background = element_rect(),
+        legend.text = element_text(face = "bold",size=12,colour = "black"),
+        legend.box.margin = margin(6, 6, 6, 6),
+        legend.title =  element_text(face="bold",colour="black") 
+        
+      )+
+      
+      coord_flip()
+    
+  })
+  
+# industry-wise plot  
+output$industryPlot <- renderPlot({
+    
+      input_gender <- input$gender_var
+      input_age <- input$age_var
+      input_country <- input$country_var
+    
+#condition when  the inputs are not changed 
+if (input_gender == 'All' & input_age == "All" & input_country=='All'){
+      
+          filter_select <- b_data %>%
+                           group_by(
+                             industry,
+                             gender
+                                  ) %>% 
+                           summarise(
+                             count=n()
+                             )
+      # condition when input gender changes 
+      } else if(!input_gender == 'All' &  input_country=='All' & input_age == 'All') {
+              
+         filter_select <- b_data %>% 
+                          filter(
+                                gender == input_gender
+                               ) %>% 
+                          group_by(
+                               industry,gender
+                               ) %>% 
+                          summarise(
+                              count =n()
+                                )
+       
+        # condition when the country and age factors are selected
+        } else if(input_gender == 'All' &  !input_country=='All' & input_age=='All') {
+                   
+            filter_select <-  b_data %>% 
+                              filter(
+                                country == input_country
+                                ) %>% 
+                              group_by(
+                                industry,
+                                gender
+                                #age_group
+                                ) %>% 
+                              summarise(
+                                count =n()
+                                )
+          
+         } else if(input_gender == 'All' &  !input_country=='All' & !input_age=='All') {
+              
+             filter_select <-  b_data %>% 
+                               filter(
+                                 country == input_country &
+                                 age_group == input_age
+                                 ) %>% 
+                               group_by(
+                                 industry,
+                                 gender,
+                                 age_group
+                                 ) %>% 
+                               summarise(
+                                 count =n()
+                                 )
+          
+        } else if(!input_gender == 'All' &  !input_country=='All' & input_age=='All') {
+          
+             filter_select <-  b_data %>% 
+                               filter(
+                                 country == input_country &
+                                 gender == input_gender
+                                 ) %>% 
+                               group_by(
+                                 industry,
+                                 gender,
+                                 age_group
+                                 ) %>% 
+                               summarise(
+                                 count =n()
+                                 )
+          
+        } else if(input_gender == 'All' &  input_country=='All' & !input_age=='All') {
+              
+              filter_select <-  b_data %>% 
+                                filter(
+                                  age_group == input_age
+                                  ) %>% 
+                                group_by(
+                                  industry,
+                                  gender,
+                                  age_group
+                                  ) %>% 
+                                summarise(
+                                  count =n()
+                                  )
+          
+        } else if(!input_gender == 'All' &  input_country=='All' & !input_age=='All') {
+          
+              filter_select <-  b_data %>% 
+                                filter(
+                                  age_group == input_age &
+                                  gender == input_gender   
+                                    ) %>% 
+                                group_by(
+                                  industry,
+                                  gender,
+                                  age_group
+                                  ) %>% 
+                                summarise(
+                                  count =n()
+                                  )
+          
+          
+      } else {
+                filter_select <- b_data %>% 
+                                 filter(
+                                   gender==input_gender &
+                                   country ==input_country &
+                                   age_group == input_age
+                                      ) %>% 
+                                   group_by(
+                                     industry,
+                                     gender,
+                                     age_group
+                                     ) %>% 
+                                   summarise(
+                                     count =n()
+                                     )
+    }
+  
+# plot to show the number of billionaires in each industry with various factors - gender,age,country
+ggplot(filter_select,
+             aes(
+               reorder(industry,count),count,fill = gender)) +
+             geom_col(position = 'dodge')+ 
+             geom_text(
+                  aes(
+                    label=count
+                    ),
+                   hjust=.2, 
+                   size=3.5)  +
+             labs(
+              # title = "Billionaires count in each Industry   " ,
+               x = " Industry " ,
+               y = "Count of Billionaires " , 
+               fill = "Gender"
+               ) +
+       
+             theme(
+         
+             plot.title = element_text(color="black", size=14, face="bold"),
+             plot.background  = element_rect(fill = "lightblue") ,
+            
+             panel.background = element_rect(color = "grey50"),
+             panel.ontop = FALSE ,
      
-                       fil_select <- b_data %>% 
-                       filter(
-                              gender == gender_input &
-                              country ==country_input
-                             ) %>% 
-                      group_by(country) %>% 
-                      summarise(count =n())
-                    }
-   
-             ggplot(fil_select,aes(reorder(country,count),count,label=count)) +
-                     geom_col(fill="lightblue") +
-                     geom_text(position=position_stack())+
-                     theme(axis.text.x=element_text(angle=65,hjust=1))+
-                     coord_flip() 
-                       
- })
- 
+             axis.title.x = element_text(color="black", size=14, face="bold"),
+             axis.title.y = element_text(color="black", size=14, face="bold"),
+         
+             axis.text.x = element_text(angle=65,hjust = 1, colour = "black",size=12,face="bold" ),
+             axis.text.y = element_text(hjust = 1, colour = "black",size=12,face="bold" ),
+         
+             legend.box.background = element_rect(),
+             legend.text = element_text(face = "bold",size=12,colour = "black"),
+             legend.box.margin = margin(6, 6, 6, 6),
+             legend.title =  element_text(face="bold",colour="black")
+          
+             )
+      
+    })  
   
-  output$sourcePlot <- renderPlot({
-                     source_networth_summary_all %>% 
-                       filter(input$gen == "All" & input$ag == 'All') %>%     
-                       filter(sum_networth >=50) %>% 
-                       ggplot(aes(source,count,size=sum_networth)) +
-                       geom_point()+
-                       theme(axis.text.x=element_text(angle=65,hjust=1))
+
+# source plot when UI changes
+
+output$sourcePlot <- renderPlot({
+                   
+              input_gender <- input$gender_var
+              input_age <- input$age_var
+              input_country <- input$country_var
     
-  })
+ if(input_gender=='All' & input_age == 'All' & input_country=='All' ){
+            
+        filter_select <- b_data %>% 
+                           group_by(
+                             source,
+                             gender,
+                             age_group
+                             ) %>%
+                           summarise(
+                             count = n(),
+                             sum_networth = sum(worth_billions)
+                                    )
+      
+        filter_select <- filter_select %>%
+                         filter(
+                           sum_networth>=20
+                           )
+      
+      
+  } else if(!input_gender=='All' & input_country=='All' & input_age == 'All') {
+      
+           filter_select <- b_data %>% 
+                            filter(
+                              gender==input_gender
+                              ) %>% 
+                            group_by(
+                              source,
+                              gender,
+                              age_group
+                              ) %>% 
+                            summarise(
+                              count=n(),
+                              sum_networth=sum(worth_billions)
+                                   )
+              
+ if(filter_select$gender=='M' | filter_select$gender=='F'){
+                 
+               filter_select <- filter_select %>%
+                                filter(
+                                  sum_networth>=20
+                                  )
+           } 
+           
+    } else if(input_gender=='All' & !input_country == 'All' & input_age == 'All') {
+      
+             filter_select <- b_data %>% 
+                              filter(
+                                country == input_country 
+                                   ) %>% 
+                               group_by(
+                                 source,
+                                 gender,
+                                 age_group
+                                 ) %>% 
+                               summarise(
+                                 count=n(),
+                                 sum_networth = sum(worth_billions)
+                                  )
+             
+    } else if(input_gender=='All' & !input_country == 'All' & !input_age == 'All') {
+              
+             filter_select <- b_data %>% 
+                              filter(
+                                country == input_country & 
+                                age_group == input_age
+                                  ) %>% 
+                              group_by(
+                                source,
+                                gender,
+                                age_group
+                                ) %>% 
+                              summarise(
+                                count=n(),
+                                sum_networth = sum(worth_billions)
+                                    )
+      
+  } else if(!input_gender =='All' & !input_country == 'All' & input_age == 'All') {
+      
+      
+         filter_select <- b_data %>% 
+                          filter(
+                            gender == input_gender &
+                            country == input_country    
+                              ) %>% 
+                          group_by(
+                            source,
+                            gender,
+                            age_group
+                            ) %>% 
+                          summarise(
+                            count=n(),
+                            sum_networth = sum(worth_billions)
+                            )
+      
+    } else if(input_gender=='All' & input_country == 'All' & !input_age == 'All') {
+      
+             filter_select <- b_data %>% 
+                              filter(
+                                age_group == input_age 
+                                ) %>% 
+                              group_by(
+                                source,
+                                gender,
+                                age_group
+                                ) %>% 
+                             summarise(
+                               count=n(),
+                               sum_networth = sum(worth_billions)
+                               )
+      
+   } else if(!input_gender=='All' & input_country == 'All' & !input_age == 'All') {
+      
+             filter_select <- b_data %>% 
+                              filter(
+                                age_group == input_age &
+                                gender == input_gender   
+                                 ) %>% 
+                               group_by(
+                                 source,
+                                 gender,
+                                 age_group
+                                 ) %>% 
+                              summarise(
+                                count=n(),
+                                sum_networth = sum(worth_billions)
+                                )
+             
+     if(filter_select$gender=='M'){
+               
+               filter_select <- filter_select %>%
+                 filter(
+                   sum_networth>=50
+                 )
+             }
+      
+  } else {
+               filter_select <- b_data %>% 
+                        filter( country == input_country & 
+                                gender == input_gender &
+                                age_group == input_age   
+                                ) %>% 
+                       group_by(source,
+                                gender,
+                                age_group
+                                ) %>%
+                       summarise(count = n(),
+                                 sum_networth = sum(worth_billions)
+                       )
+    }
+# plot for count of billionaires source wise and their sum total net worth    
+  ggplot(filter_select, 
+             aes(source,count,size=sum_networth,colour=gender)) +
+             geom_point()+
+             theme(axis.text.x=element_text(angle=65,hjust=1)) +
+             #facet_grid(~ age_group)+
+             labs( 
+               #title = "\n    Investment Area   " ,
+             x =" Source " ,y = "Count of Billionaires " , colour = "Gender",size="Total\n Net Worth \n in Billions") +
+       
+       theme(plot.title = element_text(color="black", size=14, face="bold"),
+             plot.background  = element_rect(fill = "lightblue") ,
+         
+             panel.background = element_rect(color = "grey50"),
+             panel.ontop = FALSE ,
+          
+             axis.title.x = element_text(color="black", size=14, face="bold"),
+             axis.title.y = element_text(color="black", size=14, face="bold"),
+         
+             axis.text.x = element_text(hjust = 1,colour = "black",size=12,face="bold" ),
+             axis.text.y = element_text(hjust = 1,colour = "black",size=12,face="bold" ),
+         
+             legend.box.background = element_rect(),
+             legend.text = element_text(face = "bold",size=12,colour = "black"),
+             legend.box.margin = margin(6, 6, 6, 6),
+             legend.title =  element_text(face="bold",colour="black") 
+          )
+    
+    })
+# selecting certain columns to get displayed in data table
+b_data_selected <- b_data %>%
+                       select(
+                             rank,
+                             name,
+                             age,
+                             gender,
+                             country,
+                             age_group,
+                             worth_billions,
+                             industry,
+                             source,
+                             squareImage
+                             )
+#rendering data table -for year 2017     
+output$mytable1 <- renderDataTable({
+     
+           input_gender = input$gender_var
+           input_age = input$age_var
+           input_country = input$country_var
   
-  output$table <- DT::renderDataTable({
-    
-              b_data %>% 
-                  filter(input$gen == "All" & input$ag == 'All') %>% 
-                  filter(!age==0 & !age==50 & !age=='unknown') %>% 
-                #  filter(rank>= input$rank[1] & rank <= input$rank[2]) %>% 
-                  select(rank,name,lastName,source,industry,worth_billions,age) 
-    
-  })
+      if(input_gender=='All' & input_age=='All' & input_country=='All'){
+       
+         selected <- b_data_selected %>% 
+                       select(-c(age_group)
+                              )
+         
+     } else if(input_gender == 'All' & input_age == 'All' & !input_country=='All'){
+       
+          selected <- b_data_selected %>% 
+                          filter(
+                            country == input_country
+                            ) %>% 
+                            select(
+                             -c(country,age_group)
+                             )
+          
+     } else if(input_gender == 'All' & !input_age == 'All' & !input_country=='All') {
+       
+           selected <- b_data_selected %>% 
+                          filter(
+                            age_group == input_age &
+                            country == input_country
+                              ) %>% 
+                           select(
+                             -c(country,
+                                age_group)
+                             )
   
+     } else if(!input_gender == 'All' & input_age == 'All' & input_country=='All') {
   
-  output$industryPlot_q <- renderPlot({
-    industry_summary_all %>% 
-         indus()
-      #filter(gender==input$gen,age==input$ag) %>% 
-      #ggplot(aes(reorder(industry,count),count))
-  })
+            selected <- b_data_selected %>% 
+                           filter(
+                               gender == input_gender
+                               ) %>% 
+                           select(
+                             -c(gender,age_group)
+                             )
+            
+     } else if(input_gender=='All' & !input_age=='All' & input_country=='All') {
+       
+             selected <- b_data_selected %>% 
+                            filter(
+                              age_group == input_age
+                              ) %>% 
+                            select(
+                              -c(age_group)
+                              )
+             
+     } else if(!input_gender == 'All' & !input_age == 'All' & input_country == 'All') {
+       
+            selected <- b_data_selected %>% 
+                            filter(
+                              gender == input_gender &
+                              age_group == input_age
+                              ) %>% 
+                            select(
+                              -c(gender,age_group)
+                              )
+            
+     } else if(!input_gender == 'All' & input_age == 'All' & !input_country == 'All'){
+        
+             selected <- b_data_selected %>% 
+                             filter(
+                               gender == input_gender & 
+                               country == input_country
+                               ) %>% 
+                             select(
+                               -c(gender,country,age_group)
+                               )
+       
+     } else {
+               
+             selected <- b_data_selected %>% 
+                             filter(
+                               gender == input_gender &
+                               age_group == input_age &
+                               country == input_country
+                               ) %>% 
+                             select(
+                               -c(gender,country,age_group)
+                               )
+      }
+     
     
-  indus <- eventReactive(input$button ,{
-        #  print(as.numeric(input$button))
-          industry_summary_all %>% 
-      filter(gen == input$gen) %>% 
-      ggplot(aes(reorder(industry,count),count)) +
-      geom_col(color="blue",fill="red")+
-      theme(axis.text.x =element_text(angle=65,hjust = 1))
-    
-  })
-   
- 
+DT::datatable(selected ,escape = FALSE,rownames= FALSE,
+                      options = list(
+                      scrollX = TRUE,  
+                      pageLength = 5,
+                      initComplete = JS(
+                             "function(settings, json) {",
+                             "$(this.api().table().header()).css({'background-color':'green'});",
+                             "$(this.api().table().body()).css({'color':'red'});",
+                             
+                            "}")
+     
+                      )
+     ) %>% 
+       formatStyle(
+            'worth_billions',
+            backgroundColor = styleInterval(50, c('gray', 'yellow'))
+          )
+  
+   })
+  
+# 2018 dataset country plot
+temp_2018 <- mydata_2018 %>%
+       group_by(
+         country,
+         gender
+       ) %>%
+       summarise(
+         count=n(),
+         total_networth = sum(worth_billions)
+       ) %>%
+       ungroup()
+temp_2018 <- temp_2018[order(-temp_2018$count),][1:25,]
+     
+#2018 data- countrywise- top25     
+output$new2018 <- renderPlot({
+       
+       ggplot(data=temp_2018,aes(reorder(country,count),count,fill=gender)) +
+         geom_col(position='dodge') +
+         
+         geom_text(aes(label=count), vjust=-0.3, size=3.5)+
+         scale_y_continuous(breaks=seq(0,600,50)) +
+         labs(
+           #title = "\n    Billionaires count in different Countries   " ,
+           x =" Country " ,y = "Count of Billionaires " , fill = "Gender") +
+         
+         theme(
+           plot.title = element_text(color="black", size=14, face="bold.italic"),
+           plot.background  = element_rect(fill = "lightblue") ,
+           
+           panel.background = element_rect(color = "grey50"),
+           panel.ontop = FALSE ,
+           
+           axis.title.x = element_text(color="black", size=14, face="bold"),
+           axis.title.y = element_text(color="black", size=14, face="bold"),
+           
+           axis.text.x = element_text(hjust = 1,colour = "black",size=12,face="bold" ),
+           axis.text.y = element_text(hjust = 1,colour = "black",size=12,face="bold" ),
+           
+           legend.box.background = element_rect(),
+           legend.text = element_text(face = "bold",size=12,colour = "black"),
+           legend.box.margin = margin(6, 6, 6, 6),
+           legend.title =  element_text(face="bold",colour="black") 
+           
+         )+
+         coord_flip()
+     })
+     
 })

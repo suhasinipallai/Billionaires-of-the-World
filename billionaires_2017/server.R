@@ -133,8 +133,7 @@ if (input_gender == 'All' & input_age == "All" & input_country=='All'){
                                  ) %>% 
                                group_by(
                                  industry,
-                                 gender,
-                                 age_group
+                                 gender
                                  ) %>% 
                                summarise(
                                  count =n()

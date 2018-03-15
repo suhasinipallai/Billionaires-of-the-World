@@ -5,9 +5,9 @@ account: suhasinipallai
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 296306
-bundleId: 1260384
+bundleId: 1261998
 url: https://suhasinipallai.shinyapps.io/World-Billionaires-2017/
-when: 1520564759.09678
+when: 1520649412.36342
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: www/money-sign-in-a-square.png|www/plot.png
